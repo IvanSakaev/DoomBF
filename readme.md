@@ -39,11 +39,38 @@
 - [CMake](https://cmake.org/)
 - Компилятор из Visual Studio (или совместимый) — **только** для сборки `tcc`.
 
+### Для Windows
+
 Сборка и запуск:
 ```bat
 > build.cmd
 > cd bin
 > mini_doom.exe
+```
+Запуск тестов BF:
+```bat
+> cd test
+> bench.cmd
+```
+### Для Linux
+
+Предварительно надо установить X11 SDK. Для Debian/ubuntu:
+```bash
+$ sudo apt-get update
+$ sudo apt-get install libx11-dev
+```
+
+Далее для сборки в Linux:
+```bash
+$ ./build.sh
+$ cd bin
+$ ./mini_doom
+```
+
+Запуск тестов BF в Linux:
+```bash
+$ cd test
+$ ./bench.sh
 ```
 
 ## Планы по кроссплатформенности
@@ -61,7 +88,7 @@ Linux и macOS в стадии интеграции окружений (`lnx_doo
 - Координатор: Алексей Никольский — https://t.me/+2TZRYbxns6tlZjA6
 
 Авторы (по алфавиту):
-- Александр
+- Александр Кравченко
 - Александр Суров
 - Алексей Никольский
 - Виталий

@@ -3,12 +3,12 @@
 На связи
 [Мастерская системного программирования ИТМО](https://t.me/itmosysint)
 
-> **Идея:** собрать *Doom* и запустить его поверх Brainfuck.  
+> **Идея:** собрать *Doom* и запустить его поверх Brainfuck.
 > Мы используем оригинальный исходный код Doom, компилируем его в Brainfuck, а затем исполняем BF‑код в собственной среде.
 
 ![DoomBF banner](./data/banner_doom_bf.png)
 
-**Репозиторий:** https://github.com/sit-itmo/DoomBF  
+**Репозиторий:** https://github.com/sit-itmo/DoomBF
 
 Проект является совместным творчеством группы энтузиастов в рамках студенческого сообщества ФБИТ ИТМО.
 
@@ -47,7 +47,7 @@
 ```
 
 ## Планы по кроссплатформенности
-Цель — поддержка Windows / Linux / macOS.  
+Цель — поддержка Windows / Linux / macOS.
 Linux и macOS в стадии интеграции окружений (`lnx_doom.c`, `mac_doom.m`) и допила скриптов.
 
 ## Как поучаствовать
@@ -57,7 +57,7 @@ Linux и macOS в стадии интеграции окружений (`lnx_doo
 Эзотерические языки программирования — любопытны и трудны для человека; мы исследуем их потенциал на практике и хотим довести до играбельного результата хотя бы одну легендарную игру на одном из самых «жёстких» языков.
 
 ## Команда
-- Участники сообщества: https://t.me/itmosysint  
+- Участники сообщества: https://t.me/itmosysint
 - Координатор: Алексей Никольский — https://t.me/+2TZRYbxns6tlZjA6
 
 Авторы (по алфавиту):
@@ -65,15 +65,15 @@ Linux и macOS в стадии интеграции окружений (`lnx_doo
 - Александр Суров
 - Алексей Никольский
 - Виталий
-- Иван
+- Иван Сакаев
 
 ## Полезные ссылки
 - https://brainfuck.org/brainfuck.html
 - https://github.com/xoreaxeaxeax/movfuscator
 - https://esolangs.org/wiki/Brainfuck_algorithms
 - https://esolangs.org/wiki/BFFuck
-- https://habr.com/ru/companies/badoo/articles/428878/ 
-- https://spiiin.github.io/blog/621874082/ 
+- https://habr.com/ru/companies/badoo/articles/428878/
+- https://spiiin.github.io/blog/621874082/
 - https://github.com/srorso/SoftFloat
 
 ## Лицензия

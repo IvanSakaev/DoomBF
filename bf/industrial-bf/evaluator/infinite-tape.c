@@ -11,20 +11,20 @@ uint64_t get_page_uid(uint64_t dp) {
         return dp / PAGE_SIZE;
 }
 
-char get_page_n(uint64_t dp) {
+uint8_t get_page_n(uint64_t dp) {
         return dp / PAGE_SIZE % 4;
 }
 
 #define CHECK_PAGE_TRANSITION(tape, expected_direction, dp, last_page) \
 { \
-        char cur_page = get_page_n(dp); \
+        uint8_t cur_page = get_page_n(dp); \
         if (last_page != cur_page) { \
                 last_page = cur_page; \
                 perform_page_switch(tape, expected_direction, dp); \
         } \
 }
 
-void perform_page_switch(CELL tape[], signed char expected_direction, uint64_t dp) {
+void perform_page_switch(CELL tape[], int8_t expected_direction, uint64_t dp) {
         // 0      1      2      3  
         // store keep current load
         // current page ^
@@ -36,11 +36,11 @@ void perform_page_switch(CELL tape[], signed char expected_direction, uint64_t d
 }
 
 void store_page(CELL tape[], uint64_t page_uid) {
-        char page_n = page_uid % 4;
+        uint8_t page_n = page_uid % 4;
         CELL *target = &tape[PAGE_SIZE*page_n];
 
-        char filename_buf[17];
-        char *filename = filename_buf + (PAGE_SIZE_POWER / 4);
+        character filename_buf[17];
+        string filename = filename_buf + (PAGE_SIZE_POWER / 4);
         sprintf(filename_buf, "%016lx", page_uid);
 #ifdef DEBUG
         printf("storing page: 0x%s... ", filename);
@@ -63,11 +63,11 @@ void store_page(CELL tape[], uint64_t page_uid) {
 }
 
 void load_page(CELL tape[], uint64_t page_uid) {
-        char page_n = page_uid % 4;
+        uint8_t page_n = page_uid % 4;
         CELL *target = &tape[PAGE_SIZE*page_n];
 
-        char filename_buf[17];
-        char *filename = filename_buf + (PAGE_SIZE_POWER / 4);
+        character filename_buf[17];
+        string filename = filename_buf + (PAGE_SIZE_POWER / 4);
         sprintf(filename_buf, "%016lx", page_uid);
 #ifdef DEBUG
         printf("loading page: 0x%s... ", filename);
@@ -92,7 +92,7 @@ void load_page(CELL tape[], uint64_t page_uid) {
         fclose(f);
 }
 
-char is_addr_loaded(uint64_t dp, uint64_t addr) {
+uint8_t is_addr_loaded(uint64_t dp, uint64_t addr) {
         uint64_t cur_page = get_page_uid(dp);
         uint64_t target_page = get_page_uid(addr);
 

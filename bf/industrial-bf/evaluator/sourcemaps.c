@@ -1,5 +1,5 @@
 struct sourcemap {
-        char comment_line;
+        uint8_t comment_line;
         uint64_t er_ind;
         uint64_t line_ind;
         struct vector building_text;
@@ -8,7 +8,7 @@ struct sourcemap {
 
 struct sourcemap_entry {
         uint64_t ind;
-        char *text;
+        string text;
 };
 
 struct sourcemap sourcemap;
@@ -34,7 +34,7 @@ void sourcemap_end(uint64_t ind) {
         e->ind = ind;
         e->text = vector_unwrap(bt);
 
-        vector_push_long(&sourcemap.entries, (uint64_t)e);
+        vector_push_ex(&sourcemap.entries, uint64_t, (uint64_t)e);
 
         sourcemap.line_ind = -1;
         sourcemap.er_ind = -1;
@@ -42,7 +42,7 @@ void sourcemap_end(uint64_t ind) {
         vector_init(bt, 0);
 }
 
-void sourcemap_process(char chr, uint64_t ind) {
+void sourcemap_process(character chr, uint64_t ind) {
         struct vector *bt;
         bt = &sourcemap.building_text;
 

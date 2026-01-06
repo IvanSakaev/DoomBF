@@ -2,6 +2,8 @@
                               2. This value must be greater than of equal to 8 */
 #define CELL uint8_t
 
+// #define DISABLE_ROLLING /* Disables common statement shorthands, such as ^ or 0 */
+
 // #define DEBUGGER
 // #define   DEBUGGER_DEFAULT_STATE DBG_STEP // or DBG_RUN
 // #define   DEBUGGER_TAPE_VIEW     3

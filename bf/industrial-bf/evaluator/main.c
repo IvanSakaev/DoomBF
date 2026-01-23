@@ -1,4 +1,7 @@
-// ibf - Executes BrainF and BrainFMacros programs
+/* ibf -- The industrial brainfuck interpreter
+ * 
+ * This file is licensed under the BSD Zero Clause License
+ */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,10 +20,12 @@
 
 #pragma GCC poison long
 #pragma GCC poison int
-#pragma GCC poison char
 
-typedef uint8_t* string;
-typedef uint8_t character;
+typedef char* string;
+typedef char character;
+
+uint8_t option_d;
+uint8_t option_a;
 
 #include "util.c"
 #include "vector.c"
@@ -36,42 +41,69 @@ typedef uint8_t character;
 
 #include "config.h"
 
-uint8_t* read_file(string filename, uint64_t *program_length);
-void evaluate(string program, CELL *tape);
+string read_file(string filename, uint64_t *program_length);
+void evaluate(uint8_t program[], CELL *tape);
+
+void usage(string exec) {
+        fprintf(stderr, "usage: %s [-da] [--] program.b\n",
+                exec);
+        exit(1);
+}
 
 int32_t main(int32_t argc, string argv[]) {
         string filename;
-        character addrmap_filename[65];
+        string addrmap_filename;
+        unsigned char opt;
 
-        if (argc > 2) {
-                printf("usage: %s <program>\n", argv[0]);
-                return 1;
-        } else if (argc == 2) {
-                filename = argv[1];
-        } else {
-                filename = "test.b";
+        while ((opt = getopt(argc, argv, "da")) != 0xff) {
+                switch (opt) {
+                    case 'd':
+#ifndef DEBUGGER
+                        fprintf(stderr, "This program was compiled without debugger support\n");
+                        exit(1);
+#endif
+                        option_d = 1;
+                        break;
+                    case 'a':
+#ifndef ASSERTS
+                        fprintf(stderr, "This program was compiled without assert support\n");
+                        exit(1);
+#endif
+                        option_a = 1;
+                        break;
+                    default: /* '?' */
+                        usage(argv[0]);
+                }
         }
+
+        if (optind != argc - 1) usage(argv[0]);
+        filename = argv[optind];
         
         uint64_t program_length;
         string program_raw = (string) read_file(filename, &program_length);
         if (!program_raw) exit(1);
 
 #ifdef DEBUGGER
+if (option_d) {
         sourcemap_init();
+}
 #endif
         uint8_t *program = optimize(program_raw);
 
         CELL *tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));
         memset(tape, 0, HOT_TAPE * (sizeof (CELL)));
 
-        load_page(tape, PAGE_COUNT);
+        load_page(tape, PAGE_COUNT-1);
         load_page(tape, 0);
         load_page(tape, 1);
 
+#ifdef DEBUGGER
+if (option_d) {
+        addrmap_filename = safe_malloc(strlen(filename)+6);
         strcpy(addrmap_filename, filename);
         strcat(addrmap_filename, ".addr");
-#ifdef DEBUGGER
         load_addrmap(addrmap_filename);
+}
 #endif
 
         evaluate(program, tape);
@@ -118,7 +150,7 @@ void evaluate(uint8_t program[], CELL tape[]) {
 
 #define NEXT \
         inst = &program[pc]; \
-        if (CMD_cmd(inst) != '#') \
+        if (option_d && CMD_cmd(inst) != '#') \
                 debugger_call(BREAK_REASON_INSTRUCTION, tape, program, dp, pc); \
         goto *(jumptable[CMD_cmd(inst)]);
 
@@ -157,7 +189,11 @@ left:
 
 output:
 #ifdef DEBUGGER
+if (option_d) {
         debugger_out(tape[dp%HOT_TAPE]);
+} else {
+        putchar(tape[dp%HOT_TAPE]);
+}
 #else
         putchar(tape[dp%HOT_TAPE]);
 #endif
@@ -187,7 +223,9 @@ loopend:
 divide:
         if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst)) {
 #ifdef DEBUGGER
+if (option_d) {
                 printf("warning: going into an infinite loop\n");
+}
 #endif
                 while (1) {}
         }
@@ -236,6 +274,7 @@ zero:
 
 #ifdef DEBUGGER
 breakinst:
+        if (!option_d) { NEXT }
         debugger_call(BREAK_REASON_BREAKPOINT, tape, program, dp, pc);
         pc+=1;
         NEXT

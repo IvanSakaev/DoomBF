@@ -11,7 +11,7 @@ uint64_t get_page_uid(uint64_t dp) {
         return dp / PAGE_SIZE;
 }
 
-uint8_t get_page_n(uint64_t dp) {
+inline uint8_t get_page_n(uint64_t dp) {
         return dp / PAGE_SIZE % 4;
 }
 

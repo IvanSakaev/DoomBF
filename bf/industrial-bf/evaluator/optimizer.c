@@ -220,6 +220,7 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
 
 uint8_t process_instruction(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
 #ifdef DEBUGGER
+if (option_d)
         sourcemap_process(
                 program_in[*ind],
                 program_out->length
@@ -238,9 +239,11 @@ uint8_t process_instruction(string program_in, uint64_t *ind, struct vector *pro
                         CALL_PROC(proc_rol_inst);
 
                 case '.': case ',':
+                        CALL_PROC(proc_unrol_inst);
 #ifdef DEBUGGER
                 case '#':
 #endif
+                        if (!option_d) goto ignore;
                         CALL_PROC(proc_unrol_inst);
                 case '[':
 #ifndef DISABLE_ROLLING
@@ -253,8 +256,10 @@ uint8_t process_instruction(string program_in, uint64_t *ind, struct vector *pro
 #ifdef ASSERTS
                 case '@':
                 case '!':
+                        if (!option_a) goto ignore;
                         CALL_PROC(proc_assert);
 #endif
+ignore:
                 default:
                         // Comment
                         (*ind)++;
@@ -275,7 +280,9 @@ uint8_t *optimize(string program_in) {
         ld.sp = 0;
 
 #ifdef DEBUGGER
+if (option_d) {
         printf("constructing program...\n");
+}
 #endif
         while (program_in[ind]) {
                 uint8_t out = process_instruction(program_in, &ind, &program_out, &ld);
@@ -288,8 +295,10 @@ uint8_t *optimize(string program_in) {
                 exit(1);
         }
 #ifdef DEBUGGER
+if (option_d) {
         printf("done\n");
         sourcemap_end(program_out.length-1);
+}
 #endif
         for (int32_t i = 0; i < 8; i++) {
                 vector_push(&program_out, 0);

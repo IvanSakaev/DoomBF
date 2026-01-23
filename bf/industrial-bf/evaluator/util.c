@@ -33,7 +33,7 @@ void write_long(uint8_t *ptr, uint64_t item) {
 string read_file(string filename, uint64_t *program_length) {
         FILE *f = fopen(filename, "rb");
         if (!f) {
-                printf("cannot open file: %x\n", errno);
+                perror(filename);
                 return NULL;
         }
         fseek(f, 0, SEEK_END);
@@ -119,11 +119,11 @@ uint8_t is_comment(character inst) {
              || inst == '.'
              || inst == ','
 #ifdef DEBUGGER
-             || inst == '#'
+             || (inst == '#' && option_d)
 #endif
 #ifdef ASSERTS
-             || inst == '@'
-             || inst == '!'
+             || (inst == '@' && option_a)
+             || (inst == '!' && option_a)
 #endif
         );
 }

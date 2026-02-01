@@ -115,9 +115,9 @@ void evaluate(uint8_t program[], CELL tape[]) {
 #ifdef DEBUGGER
         debugger_init();
 #endif
-        register uint64_t pc = 0;
+        register uint8_t *initial_pc = &program[0];
+        register uint8_t *pc = initial_pc;
         register uint64_t dp = 0;
-        register uint8_t *inst;
         register uint8_t last_page = 0;
 #ifdef ASSERTS
         string assert_name;
@@ -156,33 +156,31 @@ void evaluate(uint8_t program[], CELL tape[]) {
 
 #else
 
-#define NEXT \
-        inst = &program[pc]; \
-        goto *(jumptable[CMD_cmd(inst)]);
+#define NEXT goto *(jumptable[CMD_cmd(pc)]);
 
 #endif
 
         NEXT
 
 plus:
-        tape[dp%HOT_TAPE]+=CMD_rol_arg(inst);
+        tape[dp%HOT_TAPE]+=CMD_rol_arg(pc);
         pc+=2;
         NEXT
 
 minus:
-        tape[dp%HOT_TAPE]-=CMD_rol_arg(inst);
+        tape[dp%HOT_TAPE]-=CMD_rol_arg(pc);
         pc+=2;
         NEXT
 
 
 right:
-        dp+=CMD_rol_arg(inst);
+        dp+=CMD_rol_arg(pc);
         CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
         pc+=2;
         NEXT
 
 left:
-        dp-=CMD_rol_arg(inst);
+        dp-=CMD_rol_arg(pc);
         CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
         pc+=2;
         NEXT
@@ -210,18 +208,18 @@ input:
 
 loopstart:
         if (!tape[dp%HOT_TAPE])
-                pc=CMD_wide_arg(inst);
+                pc=initial_pc + CMD_wide_arg(pc);
         pc+=8;
         NEXT
 
 loopend:
         if (tape[dp%HOT_TAPE])
-                pc=CMD_wide_arg(inst);
+                pc=initial_pc + CMD_wide_arg(pc);
         pc+=8;
         NEXT
 
 divide:
-        if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst) && is_power_of_2(CMD_simple_arg(inst))) {
+        if (tape[dp%HOT_TAPE] % CMD_simple_arg(pc) && is_power_of_2(CMD_simple_arg(pc))) {
 #ifdef DEBUGGER
 if (option_d) {
                 printf("warning: going into an infinite loop\n");
@@ -230,35 +228,35 @@ if (option_d) {
                 while (1) {}
         }
 
-        tape[dp%HOT_TAPE] /= CMD_simple_arg(inst);
+        tape[dp%HOT_TAPE] /= CMD_simple_arg(pc);
         pc+=2;
         NEXT
 
 invdivide:
         tape[dp%HOT_TAPE] = -tape[dp%HOT_TAPE];
         
-        if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst) && is_power_of_2(CMD_simple_arg(inst)))
+        if (tape[dp%HOT_TAPE] % CMD_simple_arg(pc) && is_power_of_2(CMD_simple_arg(pc)))
                 while (1) {}
 
-        tape[dp%HOT_TAPE] /= CMD_simple_arg(inst);
+        tape[dp%HOT_TAPE] /= CMD_simple_arg(pc);
 
         pc+=2;
         NEXT
 
 copy:
 #define COPY(dir, invdir) \
-        dp += CMD_copy_offset(inst); \
+        dp += CMD_copy_offset(pc); \
         CHECK_PAGE_TRANSITION(tape, dir, dp, last_page); \
         tape[dp%HOT_TAPE] += val; \
-        dp -= CMD_copy_offset(inst); \
+        dp -= CMD_copy_offset(pc); \
         CHECK_PAGE_TRANSITION(tape, invdir, dp, last_page); \
         pc+=4; \
         NEXT
 
-        CELL val = tape[dp%HOT_TAPE] * CMD_copy_val(inst);
+        CELL val = tape[dp%HOT_TAPE] * CMD_copy_val(pc);
 
         if (val) {
-                if (CMD_copy_offset(inst) > 0) {
+                if (CMD_copy_offset(pc) > 0) {
                         COPY(1, -1)
                 } else {
                         COPY(-1, 1)
@@ -293,7 +291,7 @@ assert_value:
         /* fallthrough */
 
 assert_common:
-        assert_expected = CMD_wide_arg(inst);
+        assert_expected = CMD_wide_arg(pc);
         if (assert_expected != assert_got) {
                 printf("assertion failed: %s\n", assert_name);
                 printf("expected: 0x%lx\n", assert_expected);

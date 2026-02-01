@@ -7,13 +7,9 @@
 void load_page(CELL *tape, uint64_t page_uid);
 void store_page(CELL *tape, uint64_t page_uid);
 
-uint64_t get_page_uid(uint64_t dp) {
-        return dp / PAGE_SIZE;
-}
+#define get_page_uid(dp) dp / PAGE_SIZE
 
-inline uint8_t get_page_n(uint64_t dp) {
-        return dp / PAGE_SIZE % 4;
-}
+#define get_page_n(dp) dp / PAGE_SIZE % 4
 
 #define CHECK_PAGE_TRANSITION(tape, expected_direction, dp, last_page) \
 { \

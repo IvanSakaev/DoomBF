@@ -221,7 +221,7 @@ loopend:
         NEXT
 
 divide:
-        if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst)) {
+        if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst) && is_power_of_2(CMD_simple_arg(inst))) {
 #ifdef DEBUGGER
 if (option_d) {
                 printf("warning: going into an infinite loop\n");
@@ -237,7 +237,7 @@ if (option_d) {
 invdivide:
         tape[dp%HOT_TAPE] = -tape[dp%HOT_TAPE];
         
-        if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst))
+        if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst) && is_power_of_2(CMD_simple_arg(inst)))
                 while (1) {}
 
         tape[dp%HOT_TAPE] /= CMD_simple_arg(inst);

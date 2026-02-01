@@ -136,7 +136,7 @@ The instructions are as follows:
 | - |VAL|   .   .   .   .   .   . Subtract VAL + 1 from the current cell
 | < |VAL|   .   .   .   .   .   . Move VAL + 1 cells to the left
 | > |VAL|   .   .   .   .   .   . Move VAL + 1 cells to the right
-| / |VAL|   .   .   .   .   .   . Divide the current cell by VAL. Go into an infinite loop if it is not divisible.
+| / |VAL|   .   .   .   .   .   . Divide the current cell by VAL. Go into an infinite loop if it is not divisible and VAL is a power of 2.
 | \ |VAL|   .   .   .   .   .   . The same as /, but divides -(current cell)
 | ^ |OFFSET |VAL|   .   .   .   . Store (current cell)*I_VAL at offset I_OFFSET (relative to current data pointer)
 | [ | END INDEX                 | Start a loop (END INDEX indicates the address of the matching ])

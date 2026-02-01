@@ -136,3 +136,14 @@ uint8_t is_whitespace(character inst) {
              || inst == '\r'
         );
 }
+
+static inline uint8_t is_power_of_2(uint8_t v) {
+        return (v == 0   ||
+                v == 2   ||
+                v == 4   ||
+                v == 8   ||
+                v == 16  ||
+                v == 32  ||
+                v == 64  ||
+                v == 128);
+}

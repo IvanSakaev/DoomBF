@@ -1,0 +1,5 @@
+#! /bin/bash
+make ibf
+time for i in {1..10}; do
+    ./ibf ../../b/mandelbrot.b
+done

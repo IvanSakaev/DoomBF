@@ -35,7 +35,7 @@ uint8_t proc_rol_small(string program_in, uint64_t *ind, struct vector *program_
         (*ind)++;
 #ifdef COMPRESSED
         if (option_c) {
-                uint64_t number = parse_decimal(program_in, ind);
+                uint8_t number = parse_decimal(program_in, ind);
                 if (number == 0) {
                         count = 1;
                 } else {
@@ -63,7 +63,7 @@ uint8_t proc_rol_small(string program_in, uint64_t *ind, struct vector *program_
                 (*ind)++;
 #ifdef COMPRESSED
                 if (option_c) {
-                        uint64_t number = parse_decimal(program_in, ind);
+                        uint8_t number = parse_decimal(program_in, ind);
                         if (number == 0) {
                                 count++;
                         } else {
@@ -229,14 +229,14 @@ uint8_t proc_zero(string program_in, uint64_t *ind, struct vector *program_out, 
         int8_t key_found = 0; \
         uint64_t key_ind = 0; \
         for (uint64_t i = 0; i < offset_values.length; i++) { \
-                if (vector_read_ex(&offset_keys, ROLLING_TYPE, i) == offset) { \
+                if (vector_read_ex(&offset_keys, ROLLING_TYPE, i) == (ROLLING_TYPE)offset) { \
                         key_found = 1; \
                         key_ind = i; \
                         break; \
                 } \
         } \
         if (!key_found) { \
-                vector_push_ex(&offset_keys, ROLLING_TYPE, offset); \
+                vector_push_ex(&offset_keys, ROLLING_TYPE, (ROLLING_TYPE)offset); \
                 vector_push_ex(&offset_values, int8_t, change); \
         } else { \
                 change += vector_read_ex(&offset_values, int8_t, key_ind); \
@@ -257,13 +257,13 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
 }
 
 #define check_translate_left { \
-        if (offset <= ROLLING_TYPE_MIN) { \
+        if (offset <= (int64_t)ROLLING_TYPE_MIN) { \
                 destruct \
                 return -1; \
         } \
 }
 #define check_translate_right { \
-        if (offset >= ROLLING_TYPE_MAX) { \
+        if (offset >= (int64_t)ROLLING_TYPE_MAX) { \
                 destruct \
                 return -1; \
         } \
@@ -280,14 +280,14 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
         wind++;  // skipping the loop opening
 
         int8_t change = 0;
-        while (program_in[wind] != ']') {
+        while (program_in[wind] && program_in[wind] != ']') {
                 switch (program_in[wind]) {
                         case '<':
                                 if (change != 0) write_change
                                 wind++;
 #ifdef COMPRESSED
                                 if (option_c) {
-                                        uint64_t number = parse_decimal(program_in, &wind);
+                                        int64_t number = parse_decimal(program_in, &wind);
                                         if (number == 0) {
                                                 offset--;
                                                 check_translate_left
@@ -309,7 +309,7 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
                                 wind++;
 #ifdef COMPRESSED
                                 if (option_c) {
-                                        ROLLING_TYPE number = parse_decimal(program_in, &wind);
+                                        int64_t number = parse_decimal(program_in, &wind);
                                         if (number == 0) {
                                                 offset++;
                                                 check_translate_right
@@ -328,11 +328,37 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
                                 break;
                         case '+':
                                 wind++;
+#ifdef COMPRESSED
+                                if (option_c) {
+                                        uint8_t number = parse_decimal(program_in, &wind);
+                                        if (number == 0) {
+                                                change++;
+                                        } else {
+                                                change += number;
+                                        }
+                                } else {
+                                        change++;
+                                }
+#else
                                 change++;
+#endif
                                 break;
                         case '-':
                                 wind++;
+#ifdef COMPRESSED
+                                if (option_c) {
+                                        uint8_t number = parse_decimal(program_in, &wind);
+                                        if (number == 0) {
+                                                change--;
+                                        } else {
+                                                change -= number;
+                                        }
+                                } else {
+                                        change--;
+                                }
+#else
                                 change--;
+#endif
                                 break;
                         case '[':
                         case ']':
@@ -368,6 +394,7 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
         vector_push(program_out, '0');
 
         *ind = wind;
+        destruct
         return 0;
 }
 

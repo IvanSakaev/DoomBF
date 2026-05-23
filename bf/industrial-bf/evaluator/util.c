@@ -75,6 +75,18 @@ uint64_t parse_number(string arr, uint64_t *ind) {
         return val;
 }
 
+uint64_t parse_decimal(string arr, uint64_t *ind) {
+        uint64_t val = 0;
+        int8_t digit;
+        while (arr[*ind] >= '0' && arr[*ind] <= '9') {
+                digit = arr[*ind] - '0';
+                val *= 10;
+                val += digit;
+                (*ind)++;
+        }
+        return val;
+}
+
 #define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
 #define ntohll(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
 
@@ -146,4 +158,12 @@ static inline uint8_t is_power_of_2(uint8_t v) {
                 v == 32  ||
                 v == 64  ||
                 v == 128);
+}
+
+static inline uint8_t is_ignored(char a) {
+        #ifdef DEBUGGER
+        return (is_whitespace(a) && a != '\n');
+        #else
+        return is_comment(a);
+        #endif
 }

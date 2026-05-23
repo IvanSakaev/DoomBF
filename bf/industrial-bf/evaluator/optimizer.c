@@ -30,25 +30,51 @@ struct loop_data {
 uint8_t proc_rol_small(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         uint8_t inst = program_in[*ind];
         uint8_t cur;
-        uint8_t count = 1;
+        uint8_t count;
 
-#ifdef DEBUGGER
-#define is_ignored(a) (is_whitespace(a) && a != '\n')
+        (*ind)++;
+#ifdef COMPRESSED
+        if (option_c) {
+                uint64_t number = parse_decimal(program_in, ind);
+                if (number == 0) {
+                        count = 1;
+                } else {
+                        count = number;
+                }
+        } else {
+                count = 1;
+        }
 #else
-#define is_ignored is_comment
+        count = 1;
 #endif
 
         while (1) {
-                (*ind)++;
                 cur = program_in[*ind];
 
                 if (!cur)
                         break; // If reached EOF, exit
-                if (is_ignored(cur))
+                if (is_ignored(cur)) {
+                        (*ind)++;
                         continue;
+                }
                 if (cur != inst)
                         break;
+
+                (*ind)++;
+#ifdef COMPRESSED
+                if (option_c) {
+                        uint64_t number = parse_decimal(program_in, ind);
+                        if (number == 0) {
+                                count++;
+                        } else {
+                                count += number;
+                        }
+                } else {
+                        count++;
+                }
+#else
                 count++;
+#endif
         }
         if (count != 0) {
                 vector_push(program_out, inst);
@@ -60,33 +86,60 @@ uint8_t proc_rol_small(string program_in, uint64_t *ind, struct vector *program_
 uint8_t proc_rol_inst(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         uint8_t inst = program_in[*ind];
         uint8_t cur;
-        ROLLING_TYPE count = 1;
+        uint64_t count;
 
-#ifdef DEBUGGER
-#define is_ignored(a) (is_whitespace(a) && a != '\n')
+        (*ind)++;
+#ifdef COMPRESSED
+        if (option_c) {
+                uint64_t number = parse_decimal(program_in, ind);
+                if (number == 0) {
+                        count = 1;
+                } else {
+                        count = number;
+                }
+        } else {
+                count = 1;
+        }
 #else
-#define is_ignored is_comment
+        count = 1;
 #endif
-
         while (1) {
-                (*ind)++;
                 cur = program_in[*ind];
 
                 if (!cur)
                         break; // If reached EOF, exit
-                if (is_ignored(cur))
+                if (is_ignored(cur)) {
+                        (*ind)++;
                         continue;
+                }
                 if (cur != inst)
                         break;
 
-                count++;
-                if (count >= ROLLING_TYPE_MAX) {
-                        (*ind)++;
-                        break;
+                (*ind)++;
+#ifdef COMPRESSED
+                if (option_c) {
+                        uint64_t number = parse_decimal(program_in, ind);
+                        if (number == 0) {
+                                count++;
+                        } else {
+                                count += number;
+                        }
+                } else {
+                        count++;
                 }
+#else
+                count++;
+#endif
         }
-        vector_push(program_out, inst);
-        _vector_push_multibyte_little(program_out, count, sizeof(ROLLING_TYPE));
+        while (count >= ROLLING_TYPE_MAX) {
+                vector_push(program_out, inst);
+                _vector_push_multibyte_little(program_out, ROLLING_TYPE_MAX, sizeof(ROLLING_TYPE));
+                count -= ROLLING_TYPE_MAX;
+        }
+        if (count > 0) {
+                vector_push(program_out, inst);
+                _vector_push_multibyte_little(program_out, count, sizeof(ROLLING_TYPE));
+        }
         return 0;
 }
 
@@ -151,13 +204,20 @@ uint8_t proc_assert(string program_in, uint64_t *ind, struct vector *program_out
 uint8_t proc_zero(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         uint64_t wind = *ind;
 
-        wind++;
+        while (is_ignored(program_in[++wind])) {}
+
         if (
                 program_in[wind] != '-' &&
                 program_in[wind] != '+'
         ) return -1;
 
-        if (program_in[++wind] != ']') return -1;
+        wind++;
+        uint8_t number = parse_decimal(program_in, &wind);
+        if ((number != 0) && (number != 1) && (number != 255)) return -1;
+
+        while (is_ignored(program_in[wind]))
+                wind++;
+        if (program_in[wind] != ']') return -1;
 
         vector_push(program_out, '0');
 
@@ -196,37 +256,82 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
         vector_drop(&offset_values); \
 }
 
+#define check_translate_left { \
+        if (offset <= ROLLING_TYPE_MIN) { \
+                destruct \
+                return -1; \
+        } \
+}
+#define check_translate_right { \
+        if (offset >= ROLLING_TYPE_MAX) { \
+                destruct \
+                return -1; \
+        } \
+}
+
         vector_init(&offset_keys, 0);
         vector_init(&offset_values, 0);
 
         vector_push_ex(&offset_keys, ROLLING_TYPE, 0);
         vector_push(&offset_values, 0);
 
-        ROLLING_TYPE offset = 0;
+        int64_t offset = 0;
+
+        wind++;  // skipping the loop opening
 
         int8_t change = 0;
-        while (program_in[++wind/*skipping the loop opening*/] != ']') {
+        while (program_in[wind] != ']') {
                 switch (program_in[wind]) {
                         case '<':
                                 if (change != 0) write_change
-                                offset--;
-                                if (offset <= ROLLING_TYPE_MIN) {
-                                        destruct
-                                        return -1;
+                                wind++;
+#ifdef COMPRESSED
+                                if (option_c) {
+                                        uint64_t number = parse_decimal(program_in, &wind);
+                                        if (number == 0) {
+                                                offset--;
+                                                check_translate_left
+                                        } else {
+                                                offset -= number;
+                                                check_translate_left
+                                        }
+                                } else {
+                                        offset--;
+                                        check_translate_left
                                 }
+#else
+                                offset--;
+                                check_translate_left
+#endif
                                 break;
                         case '>':
                                 if (change != 0) write_change
-                                offset++;
-                                if (offset >= ROLLING_TYPE_MAX) {
-                                        destruct
-                                        return -1;
+                                wind++;
+#ifdef COMPRESSED
+                                if (option_c) {
+                                        ROLLING_TYPE number = parse_decimal(program_in, &wind);
+                                        if (number == 0) {
+                                                offset++;
+                                                check_translate_right
+                                        } else {
+                                                offset += number;
+                                                check_translate_right
+                                        }
+                                } else {
+                                        offset++;
+                                        check_translate_right
                                 }
+#else
+                                offset++;
+                                check_translate_right
+#endif
                                 break;
                         case '+':
+                                wind++;
                                 change++;
                                 break;
                         case '-':
+                                wind++;
                                 change--;
                                 break;
                         case '[':
@@ -235,6 +340,8 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
                         case '.':
                                 destruct
                                 return -1;
+                        default:
+                                wind++;
                 }
         }
         if (change != 0) write_change

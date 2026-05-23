@@ -15,11 +15,13 @@ typedef int32_t ROLLING_TYPE;
 //                     isn't used (mandelbrot 12s->15s) */
 // #define   DEBUGGER_DEFAULT_STATE DBG_STEP // or DBG_RUN
 // #define   DEBUGGER_TAPE_VIEW     8
+// #define   CELL_FORMAT_STRING "%2x"
+
 #define ASSERTS
-#define CELL_FORMAT_STRING "%2x"
+#define COMPRESSED
 
 
 // Don't change:
 #define ROLLING_SIZE sizeof(ROLLING_TYPE)
 #define ROLLING_TYPE_MAX ((1 << PAGE_SIZE_POWER) < __ROLLING_TYPE_MAX ? (1 << PAGE_SIZE_POWER) : __ROLLING_TYPE_MAX)
-#define ROLLING_TYPE_MIN (-ROLLING_TYPE_MAX-1)
+#define ROLLING_TYPE_MIN (-ROLLING_TYPE_MAX)

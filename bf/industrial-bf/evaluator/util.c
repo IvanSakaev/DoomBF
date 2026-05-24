@@ -75,15 +75,21 @@ uint64_t parse_number(string arr, uint64_t *ind) {
         return val;
 }
 
-uint64_t parse_decimal(string arr, uint64_t *ind) {
+uint64_t parse_sym_count(string arr, uint64_t *ind) {
         uint64_t val = 0;
         int8_t digit;
-        while (arr[*ind] >= '0' && arr[*ind] <= '9') {
-                digit = arr[*ind] - '0';
-                val *= 10;
+        if (arr[*ind] != '{') return 0;
+        uint64_t ind2 = *ind + 1;
+        while (arr[ind2] != '}') {
+                digit = parse_digit(arr[ind2]);
+                if (digit == -1) {
+                        return 0;
+                }
+                val <<= 4;
                 val += digit;
-                (*ind)++;
+                ind2++;
         }
+        *ind = ind2;
         return val;
 }
 

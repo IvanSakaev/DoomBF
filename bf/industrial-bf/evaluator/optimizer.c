@@ -35,7 +35,7 @@ uint8_t proc_rol_small(string program_in, uint64_t *ind, struct vector *program_
         (*ind)++;
 #ifdef COMPRESSED
         if (option_c) {
-                uint8_t number = parse_decimal(program_in, ind);
+                uint8_t number = parse_sym_count(program_in, ind);
                 if (number == 0) {
                         count = 1;
                 } else {
@@ -63,7 +63,7 @@ uint8_t proc_rol_small(string program_in, uint64_t *ind, struct vector *program_
                 (*ind)++;
 #ifdef COMPRESSED
                 if (option_c) {
-                        uint8_t number = parse_decimal(program_in, ind);
+                        uint8_t number = parse_sym_count(program_in, ind);
                         if (number == 0) {
                                 count++;
                         } else {
@@ -91,7 +91,7 @@ uint8_t proc_rol_inst(string program_in, uint64_t *ind, struct vector *program_o
         (*ind)++;
 #ifdef COMPRESSED
         if (option_c) {
-                uint64_t number = parse_decimal(program_in, ind);
+                uint64_t number = parse_sym_count(program_in, ind);
                 if (number == 0) {
                         count = 1;
                 } else {
@@ -118,7 +118,7 @@ uint8_t proc_rol_inst(string program_in, uint64_t *ind, struct vector *program_o
                 (*ind)++;
 #ifdef COMPRESSED
                 if (option_c) {
-                        uint64_t number = parse_decimal(program_in, ind);
+                        uint64_t number = parse_sym_count(program_in, ind);
                         if (number == 0) {
                                 count++;
                         } else {
@@ -212,7 +212,7 @@ uint8_t proc_zero(string program_in, uint64_t *ind, struct vector *program_out, 
         ) return -1;
 
         wind++;
-        uint8_t number = parse_decimal(program_in, &wind);
+        uint8_t number = parse_sym_count(program_in, &wind);
         if ((number != 0) && (number != 1) && (number != 255)) return -1;
 
         while (is_ignored(program_in[wind]))
@@ -287,7 +287,7 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
                                 wind++;
 #ifdef COMPRESSED
                                 if (option_c) {
-                                        int64_t number = parse_decimal(program_in, &wind);
+                                        int64_t number = parse_sym_count(program_in, &wind);
                                         if (number == 0) {
                                                 offset--;
                                                 check_translate_left
@@ -309,7 +309,7 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
                                 wind++;
 #ifdef COMPRESSED
                                 if (option_c) {
-                                        int64_t number = parse_decimal(program_in, &wind);
+                                        int64_t number = parse_sym_count(program_in, &wind);
                                         if (number == 0) {
                                                 offset++;
                                                 check_translate_right
@@ -330,7 +330,7 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
                                 wind++;
 #ifdef COMPRESSED
                                 if (option_c) {
-                                        uint8_t number = parse_decimal(program_in, &wind);
+                                        uint8_t number = parse_sym_count(program_in, &wind);
                                         if (number == 0) {
                                                 change++;
                                         } else {
@@ -347,7 +347,7 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
                                 wind++;
 #ifdef COMPRESSED
                                 if (option_c) {
-                                        uint8_t number = parse_decimal(program_in, &wind);
+                                        uint8_t number = parse_sym_count(program_in, &wind);
                                         if (number == 0) {
                                                 change--;
                                         } else {

@@ -89,7 +89,7 @@ uint64_t parse_sym_count(string arr, uint64_t *ind) {
                 val += digit;
                 ind2++;
         }
-        *ind = ind2;
+        *ind = ind2 + 1;
         return val;
 }
 

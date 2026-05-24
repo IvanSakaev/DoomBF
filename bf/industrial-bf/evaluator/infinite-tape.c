@@ -1,6 +1,6 @@
 #include "config.h"
 
-#define PAGE_SIZE (1<<PAGE_SIZE_POWER)
+#define PAGE_SIZE ((uint64_t)1<<PAGE_SIZE_POWER)
 #define HOT_TAPE (PAGE_SIZE * 4)
 #define PAGE_COUNT ((~((uint64_t)0)>>PAGE_SIZE_POWER)+1)
 

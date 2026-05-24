@@ -1,4 +1,4 @@
-#define PAGE_SIZE_POWER 24 /* 1. The page size is 2**PAGE_SIZE_POWER \
+#define PAGE_SIZE_POWER 29 /* 1. The page size is 2**PAGE_SIZE_POWER \
                               2. This value must be greater than of equal to 8 */
 #define CELL uint8_t  // Changing this value may cause bugs
 

@@ -145,6 +145,7 @@ void evaluate(uint8_t program[], CELL tape[]) {
         jumptable[']'] = &&loopend;
         jumptable['^'] = &&copy;
         jumptable['0'] = &&zero;
+        jumptable[';'] = &&rol_output;
 #ifdef DEBUGGER
         jumptable['#'] = &&breakinst;
 #endif
@@ -251,6 +252,12 @@ copy:
 
 zero:
         tape[dp%HOT_TAPE] = 0;
+        pc+=1;
+        NEXT
+
+rol_output:
+        tape[dp%HOT_TAPE] = 0;
+        printf("%s", &tape[(dp+1)%HOT_TAPE]);
         pc+=1;
         NEXT
 

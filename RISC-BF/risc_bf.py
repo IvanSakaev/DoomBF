@@ -97,7 +97,7 @@ class Program:
     def program_epilogue(self):
         currents[-1].raw("-]")
         if config.BREAKPOINT_EVERY_CYCLE:
-            concater.raw("#")
+            concater.raw("*")
         nexts[-1].raw("]")
 
     def block_prologue(self, block: Block, deep: int):
@@ -132,7 +132,7 @@ class Program:
                 for scrap in scraps:
                     scrap.assert_val(0)
             if config.BREAKPOINT_AFTER_EVERY_INSTRUCTION:
-                concater.raw("#")
+                concater.raw("*")
         else:
             for bl in block.daughter_blocks:
                 self.assemble_block(bl, deep + 1)

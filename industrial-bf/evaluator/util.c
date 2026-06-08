@@ -120,6 +120,7 @@ static inline uint8_t is_comment(character inst) {
              || inst == ','
 #ifdef DEBUGGER
              || (inst == '#' && option_d)
+             || (inst == '*' && option_d)
 #endif
 #ifdef ASSERTS
              || (inst == '@' && option_a)

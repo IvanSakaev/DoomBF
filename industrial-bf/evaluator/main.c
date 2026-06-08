@@ -171,6 +171,7 @@ void evaluate(uint8_t program[]) {
         jumptable['0'] = &&zero;
 #ifdef DEBUGGER
         jumptable['#'] = &&breakinst;
+        jumptable['*'] = &&weak_breakinst;
 #endif
 #ifdef ASSERTS
         jumptable['@'] = &&assert_location;
@@ -291,6 +292,9 @@ zero:
 breakinst:
         if (!option_d) { NEXT }
         debugger_call(BREAK_REASON_BREAKPOINT, tape, program, dp, pc);
+        pc+=1;
+        NEXT
+weak_breakinst:
         pc+=1;
         NEXT
 #endif

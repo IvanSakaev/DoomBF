@@ -367,7 +367,7 @@ static inline uint8_t proc_move(struct revertable_stream *program_in, struct vec
                                         return -1;
 #endif
 #ifdef DEBUGGER
-                                if (chr == '#')
+                                if (chr == '#' || chr == '*')
                                         return -1;
 #endif
                 }
@@ -450,6 +450,7 @@ if (option_d)
                         CALL_PROC(proc_unrol_inst);
 #ifdef DEBUGGER
                 case '#':
+                case '*':
                         if (!option_d) goto ignore;
                         CALL_PROC(proc_unrol_inst);
 #endif

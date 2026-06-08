@@ -1,5 +1,6 @@
 #define BREAK_REASON_INSTRUCTION ((uint8_t)1)
 #define BREAK_REASON_BREAKPOINT ((uint8_t)2)
+#define BREAK_REASON_WEAK_BREAKPOINT ((uint8_t)3)
 
 #define TYPOGRAPHIC_CELL_WIDTH ((sizeof (CELL)) * 2)
 
@@ -12,6 +13,7 @@
 enum dbg_state {
         DBG_STEP,
         DBG_RUN,
+        DBG_RUN_UNTIL_WEAK,
         DBG_EXIT_SEARCH,
         DBG_EXIT_RUN,
         DBG_SM_NEXT
@@ -52,6 +54,7 @@ void debugger_help() {
         printf(
                 "? - display help\n"
                 "r - run the program until a breakpoint is reached\n"
+                "w - run the program until a weak breakpoint is reached\n"
                 "s - step one instruction forward\n"
                 "x - run until the current loop ends\n"
                 "n - run until the next sourcemap line\n"
@@ -238,6 +241,9 @@ skip_prompt:
                                 break;
                         case 'r':
                                 debugger_state = DBG_RUN;
+                                goto continue_execution;
+                        case 'w':
+                                debugger_state = DBG_RUN_UNTIL_WEAK;
                                 goto continue_execution;
                         case 's':
                                 debugger_state = DBG_STEP;
@@ -520,6 +526,9 @@ uint8_t debugger_print_instruction(uint8_t *inst) {
                 case '#':
                         printf("%c\n", cmd);
                         return 1;
+                case '*':
+                        printf("%c\n", cmd);
+                        return 1;
                 case 0:
                         printf("end\n");
                         return 0;
@@ -553,6 +562,12 @@ void debugger_call(uint8_t reason, CELL tape[], uint8_t program[], uint64_t dp, 
         if (reason != BREAK_REASON_BREAKPOINT)
                 switch (debugger_state) {
                         case DBG_RUN:
+                                if (!program[pc])
+                                        debugger_print_output();
+                                return;
+                        case DBG_RUN_UNTIL_WEAK:
+                                if (program[pc] == '*')
+                                        break;
                                 if (!program[pc])
                                         debugger_print_output();
                                 return;

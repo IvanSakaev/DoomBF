@@ -22,7 +22,9 @@ Use the `DEBUGGER` option
 
 Replaces the execution environment with a simple CLI debugger that allows you to step a single instruction or run the program until a breakpoint.
 
-Adds a new instruction: `#` (breakpoint)
+Adds new instructions:
+- `#` (breakpoint)
+- `*` (weak breakpoint)
 
 In the debugger UI, the following commands can be used:
 ```
@@ -32,6 +34,7 @@ w - run the program until a weak breakpoint is reached
 s - step one instruction forward
 x - run until the current loop ends
 n - run until the next sourcemap line
+D - dump tape
 a - load an addrmap file
 q - quit
 ```

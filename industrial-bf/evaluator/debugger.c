@@ -58,6 +58,7 @@ void debugger_help() {
                 "s - step one instruction forward\n"
                 "x - run until the current loop ends\n"
                 "n - run until the next sourcemap line\n"
+                "D - dump tape\n"
                 "a - load an addrmap file\n"
                 "q - quit\n"
         );
@@ -265,6 +266,9 @@ skip_prompt:
                                         filename[len-1] = 0;
                                 }
                                 load_addrmap(filename);
+                                break;
+                        case 'D':
+                                dump_tape();
                                 break;
                         case 'q':
                                 exit(0);

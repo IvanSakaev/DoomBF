@@ -182,7 +182,7 @@ void evaluate(uint8_t program[]) {
 
 #define NEXT \
         inst = &program[pc]; \
-        if (option_d && CMD_cmd(inst) != '#') \
+        if (option_d && CMD_cmd(inst) != '#' && CMD_cmd(inst) != '*') \
                 debugger_call(BREAK_REASON_INSTRUCTION, tape, program, dp, pc); \
         goto *(jumptable[CMD_cmd(inst)]);
 
@@ -290,12 +290,14 @@ zero:
 
 #ifdef DEBUGGER
 breakinst:
-        if (!option_d) { NEXT }
+        if (!option_d) { pc+=1; NEXT }
         debugger_call(BREAK_REASON_BREAKPOINT, tape, program, dp, pc);
         pc+=1;
         NEXT
 weak_breakinst:
+        if (!option_d) { pc+=1; NEXT }
         pc+=1;
+        debugger_call(BREAK_REASON_WEAK_BREAKPOINT, tape, program, dp, pc);
         NEXT
 #endif
 

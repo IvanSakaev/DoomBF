@@ -570,7 +570,7 @@ void debugger_call(uint8_t reason, CELL tape[], uint8_t program[], uint64_t dp, 
                                         debugger_print_output();
                                 return;
                         case DBG_RUN_UNTIL_WEAK:
-                                if (program[pc] == '*')
+                                if (reason == BREAK_REASON_WEAK_BREAKPOINT)
                                         break;
                                 if (!program[pc])
                                         debugger_print_output();

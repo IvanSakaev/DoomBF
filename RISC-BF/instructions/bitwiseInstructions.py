@@ -33,7 +33,6 @@ class ShiftLeft(Instruction):
         # scraps 3 and 4 are used for div_imm()
 
         self.shift.get_cell(0).div_imm(4, shift_small, shift_big)
-        shift_small.copy(self.shift.get_cell(0), scrap=shift_big_scrap)
         shift_big.copy(self.shift.get_cell(0), multiplier=4, scrap=shift_big_scrap)
         self.shift.get_cell(1).div_imm(2, shift_scrap, shift_verybig_unused)
         shift_verybig_unused.move(self.shift.get_cell(1), multiplier=2)

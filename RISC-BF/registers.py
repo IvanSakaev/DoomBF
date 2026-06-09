@@ -56,8 +56,6 @@ class Register:
         if a < 0:
             a += 2 ** 32
         assert 0 <= a < (2 ** 32)
-        if a < 0:
-            a = 2 ** 32 - a
         for cell in self.get_cells():
             if clear:
                 cell.clear()

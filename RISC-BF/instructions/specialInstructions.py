@@ -27,7 +27,7 @@ class LoadUpperI(Instruction):
     src: Immediate
 
     def evaluate(self, program: Program, cur_block: Block, comments: bool = False):
-        concater.rem(f"li {self.dst} {self.src}", comments)
+        concater.rem(f"lui {self.dst} {self.src}", comments)
         inst = LoadI(self.dst, Immediate(self.src * (2 ** 12)))
         inst.evaluate(program, cur_block)
 

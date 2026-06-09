@@ -57,23 +57,31 @@ def clean(s: str) -> str:
     return ANSI.sub("", s)
 
 
+BLOCK_SIZE = 256
+
+
+def pack_next_bytes(components: list[int]) -> int:
+    return sum((v & 0xFF) << (8 * i) for i, v in enumerate(components))
+
+
 def parse_stop(chunk: str):
     plain = clean(chunk)
     mnemonic = ""
     next_addr = None
+    next_components = None
     regs = {}
     nxt = re.search(r"next: (0x[0-9a-f]+(?:, 0x[0-9a-f]+){3})", plain)
     if nxt:
-        cells = [int(x, 16) for x in re.findall(r"0x([0-9a-f]+)", nxt.group(1))]
-        next_addr = sum((v & 0xFF) << (4 * i) for i, v in enumerate(cells))
+        next_components = [int(x, 16) for x in re.findall(r"0x([0-9a-f]+)", nxt.group(1))]
+        next_addr = sum((v & 0xFF) << (8 * i) for i, v in enumerate(next_components))
 
     for m in re.finditer(r"^>?\s*(x\d+):\s*(.+)$", plain, re.M):
         cells = [int(x, 16) for x in re.findall(r"0x([0-9a-f]+)", m.group(2))]
-        regs[m.group(1)] = sum((v & 0xFF) << (4 * i) for i, v in enumerate(cells))
+        regs[m.group(1)] = sum((v & 0xF) << (4 * i) for i, v in enumerate(cells))
 
     mnemonic = re.findall(r">.*\n", plain)[-1]
     mnemonic = mnemonic.strip().lstrip(">").strip()
-    return mnemonic, next_addr, regs
+    return mnemonic, next_addr, next_components, regs, plain
 
 
 def get_output(child: pexpect.spawn, command: str, i: int):
@@ -88,21 +96,33 @@ def get_output(child: pexpect.spawn, command: str, i: int):
     elif idx == 2:
         print("ibf завершился")
         sys.exit(1)
-    mnemonic, next_addr, regs = parse_stop(chunk)
+    mnemonic, next_addr, next_components, regs, plain = parse_stop(chunk)
     print(
-        f"{command} #{i:3d}\n"
+        f"{command} #{i:5d}\n"
         f"  next=0x{next_addr or 0:04x}\n"
         f"  mnemonic={mnemonic}\n"
-        f"  x1=0x{regs.get("x1", 0):08x}"
+        f"  x10=0x{regs.get("x10", 0):08x}"
     )
     instr, args = parse_mnemonic(mnemonic)
-    return instr, args, next_addr, regs
+    return instr, args, next_addr, next_components, regs, plain
 
+
+
+def parse_imm(token: str) -> int:
+    sign = 1
+    if token.startswith("_"):
+        sign = -1
+        token = token[1:]
+    if token.startswith("0x"):
+        val = int(token[2:], 16)
+    else:
+        val = int(token)
+    return val * sign
 
 
 def parse_mnemonic(plain: str):
     l = plain.split()
-    l = [a.strip().strip(",").strip().lower() for a in l]
+    l = [a.strip().strip(",").lower() for a in l]
     instr = l[0]
     args = []
     for a in l[1:]:
@@ -112,66 +132,289 @@ def parse_mnemonic(plain: str):
             a, b = a.split("(")
             assert b.endswith(")")
             b = b[:-1]
-            
-            sign = 1
-            if a.startswith("_"):
-                sign = -1
-                a = a[1:]
-            a = int(a, 16) * sign
-            args.append(a)
-
+            args.append(parse_imm(a))
             args.append(REGS_NAMES[b])
         else:
-            sign = 1
-            if a.startswith("_"):
-                sign = -1
-                a = a[1:]
-            a = int(a, 16) * sign
-            args.append(a)
+            args.append(parse_imm(a))
     return instr, args
 
 
+MASK32 = 0xFFFFFFFF
+PROGRAM_START_ADDRESS = 16
+
+JUMP_INSTRS = {
+    "j", "jr", "jal", "jalr", "call", "ret",
+    "beq", "beqz", "bne", "bnez", "blt", "bltu", "bge", "bgeu",
+    "blez", "bgez", "bltz", "bgtz", "bgt", "ble", "bgtu", "bleu",
+}
+
 current_addr = 0
+current_linear = 0
 regs = None
 memory = [0] * (16 ** 7)
 
 
-def run_command(instr, args, next_addr_predict, regs_predict):
-    global current_addr, regs
+def u32(v: int) -> int:
+    return v & MASK32
+
+
+def s32(v: int) -> int:
+    v = u32(v)
+    return v if v < 0x80000000 else v - 0x100000000
+
+
+def shamt(v: int) -> int:
+    return v & 0x1F
+
+
+def imm12(v: int) -> int:
+    v &= 0xFFF
+    return v if v < 0x800 else v - 0x1000
+
+
+def components_to_linear(components: list[int]) -> int:
+    return sum((components[i] & 0xFF) * (BLOCK_SIZE ** i) for i in range(4))
+
+
+def linear_to_components(linear: int) -> list[int]:
+    linear = u32(linear)
+    return [(linear // (BLOCK_SIZE ** i)) % BLOCK_SIZE for i in range(4)]
+
+
+def linear_to_packed(linear: int) -> int:
+    return pack_next_bytes(linear_to_components(linear))
+
+
+def reg_to_next(val: int) -> int:
+    val = u32(val) & ~1
+    digits = [(val >> (4 * i)) & 0xF for i in range(8)]
+    components = [digits[2 * j] | (digits[2 * j + 1] << 4) for j in range(4)]
+    return pack_next_bytes(components)
+
+
+def next_addr_add(linear: int, offset: int) -> int:
+    linear += offset
+    assert linear >= 0, f"negative next addr: {linear:#x} (offset={offset:#x})"
+    return linear_to_packed(linear)
+
+
+def write_reg(rd: str, value: int) -> None:
+    if rd != "x0":
+        regs[rd] = u32(value)
+
+
+def mem_write(addr: int, value: int, size: int) -> None:
+    addr = u32(addr)
+    value = u32(value)
+    for i in range(size):
+        memory[addr + i] = (value >> (8 * i)) & 0xFF
+
+
+def mem_read(addr: int, size: int, signed: bool) -> int:
+    addr = u32(addr)
+    raw = 0
+    for i in range(size):
+        raw |= memory[addr + i] << (8 * i)
+    if signed and raw >= (1 << (size * 8 - 1)):
+        raw -= 1 << (size * 8)
+    return u32(raw)
+
+
+def zero_jalr_next(offset: int) -> int:
+    components = [0, 0, 0, PROGRAM_START_ADDRESS]
+    off = offset
+    for i in range(4):
+        components[i] = (components[i] + (off % BLOCK_SIZE)) % BLOCK_SIZE
+        off //= BLOCK_SIZE
+    return pack_next_bytes(components)
+
+
+def branch_taken(instr: str, args: list) -> bool:
+    if instr == "beq":
+        return regs[args[0]] == regs[args[1]]
+    if instr == "bne":
+        return regs[args[0]] != regs[args[1]]
+    if instr == "blt":
+        return s32(regs[args[0]]) < s32(regs[args[1]])
+    if instr == "bltu":
+        return u32(regs[args[0]]) < u32(regs[args[1]])
+    if instr == "bge":
+        return s32(regs[args[0]]) >= s32(regs[args[1]])
+    if instr == "bgeu":
+        return u32(regs[args[0]]) >= u32(regs[args[1]])
+    if instr == "beqz":
+        return regs[args[0]] == 0
+    if instr == "bnez":
+        return regs[args[0]] != 0
+    if instr == "blez":
+        return s32(regs[args[0]]) <= 0
+    if instr == "bgez":
+        return s32(regs[args[0]]) >= 0
+    if instr == "bltz":
+        return s32(regs[args[0]]) < 0
+    if instr == "bgtz":
+        return s32(regs[args[0]]) > 0
+    if instr == "bgt":
+        return s32(regs[args[0]]) > s32(regs[args[1]])
+    if instr == "ble":
+        return s32(regs[args[0]]) <= s32(regs[args[1]])
+    if instr == "bgtu":
+        return u32(regs[args[0]]) > u32(regs[args[1]])
+    if instr == "bleu":
+        return u32(regs[args[0]]) <= u32(regs[args[1]])
+    raise ValueError(instr)
+
+
+def run_command(instr, args, next_addr_predict, next_components, regs_predict, plain):
+    global current_addr, current_linear, regs
     if regs is None:
+        assert next_components is not None
         current_addr = next_addr_predict
+        current_linear = components_to_linear(next_components)
         regs = {
             **regs_predict,
-            "x0" : 0
+            "x0": 0,
         }
         return
 
+    pc = current_addr
+    pc_linear = current_linear
+    predicted_next = None
+
     if instr == "add":
-        regs[args[0]] = regs[args[1]] + regs[args[2]]
+        write_reg(args[0], regs[args[1]] + regs[args[2]])
     elif instr == "addi":
-        regs[args[0]] = regs[args[1]] + args[2]
+        write_reg(args[0], regs[args[1]] + imm12(args[2]))
     elif instr == "sub":
-        regs[args[0]] = regs[args[1]] - regs[args[2]]
+        write_reg(args[0], regs[args[1]] - regs[args[2]])
     elif instr == "li":
-        regs[args[0]] = args[1]
+        write_reg(args[0], args[1])
     elif instr == "lui":
-        regs[args[0]] = args[1] << 12
+        write_reg(args[0], args[1] << 12)
     elif instr == "mv":
-        regs[args[0]] = regs[args[1]]
+        write_reg(args[0], regs[args[1]])
     elif instr == "neg":
-        regs[args[0]] = -regs[args[1]]
+        write_reg(args[0], -regs[args[1]])
     elif instr == "nop":
         pass
+    elif instr == "unimp":
+        pass
+    elif instr == "ebreak":
+        pass
+    elif instr == "ecall":
+        pass
+
     elif instr == "sll":
-        regs[args[0]] = regs[args[1]] << regs[args[2]]
+        write_reg(args[0], u32(regs[args[1]] << shamt(regs[args[2]])))
     elif instr == "slli":
-        regs[args[0]] = regs[args[1]] << args[2]
+        write_reg(args[0], u32(regs[args[1]] << shamt(args[2])))
+    elif instr == "srl":
+        write_reg(args[0], u32(regs[args[1]] >> shamt(regs[args[2]])))
+    elif instr == "srli":
+        write_reg(args[0], u32(regs[args[1]] >> shamt(args[2])))
+    elif instr == "sra":
+        write_reg(args[0], u32(s32(regs[args[1]]) >> shamt(regs[args[2]])))
+    elif instr == "srai":
+        write_reg(args[0], u32(s32(regs[args[1]]) >> shamt(args[2])))
+
+    elif instr == "or":
+        write_reg(args[0], regs[args[1]] | regs[args[2]])
+    elif instr == "and":
+        write_reg(args[0], regs[args[1]] & regs[args[2]])
+    elif instr == "xor":
+        write_reg(args[0], regs[args[1]] ^ regs[args[2]])
+    elif instr == "not":
+        write_reg(args[0], ~regs[args[1]])
+    elif instr == "ori":
+        write_reg(args[0], regs[args[1]] | u32(imm12(args[2])))
+    elif instr == "andi":
+        write_reg(args[0], regs[args[1]] & u32(imm12(args[2])))
+    elif instr == "xori":
+        write_reg(args[0], regs[args[1]] ^ u32(imm12(args[2])))
+
+    elif instr == "slt":
+        write_reg(args[0], 1 if s32(regs[args[1]]) < s32(regs[args[2]]) else 0)
+    elif instr == "slti":
+        write_reg(args[0], 1 if s32(regs[args[1]]) < s32(imm12(args[2])) else 0)
+    elif instr == "sltu":
+        write_reg(args[0], 1 if u32(regs[args[1]]) < u32(regs[args[2]]) else 0)
+    elif instr == "sltiu":
+        write_reg(args[0], 1 if u32(regs[args[1]]) < u32(imm12(args[2])) else 0)
+    elif instr == "seqz":
+        write_reg(args[0], 1 if regs[args[1]] == 0 else 0)
+    elif instr == "snez":
+        write_reg(args[0], 1 if regs[args[1]] != 0 else 0)
+    elif instr == "sltz":
+        write_reg(args[0], 1 if s32(regs[args[1]]) < 0 else 0)
+    elif instr == "sgtz":
+        write_reg(args[0], 1 if s32(regs[args[1]]) > 0 else 0)
+
+    elif instr == "sw":
+        mem_write(regs[args[2]] + args[1], regs[args[0]], 4)
+    elif instr == "sh":
+        mem_write(regs[args[2]] + args[1], regs[args[0]], 2)
+    elif instr == "sb":
+        mem_write(regs[args[2]] + args[1], regs[args[0]], 1)
+    elif instr == "lw":
+        write_reg(args[0], mem_read(regs[args[2]] + args[1], 4, signed=True))
+    elif instr == "lh":
+        write_reg(args[0], mem_read(regs[args[2]] + args[1], 2, signed=True))
+    elif instr == "lhu":
+        write_reg(args[0], mem_read(regs[args[2]] + args[1], 2, signed=False))
+    elif instr == "lb":
+        write_reg(args[0], mem_read(regs[args[2]] + args[1], 1, signed=True))
+    elif instr == "lbu":
+        write_reg(args[0], mem_read(regs[args[2]] + args[1], 1, signed=False))
+
+    elif instr == "auipc":
+        write_reg(args[0], u32(pc_linear + (args[1] << 12)))
+    elif instr == "j":
+        predicted_next = next_addr_add(pc_linear, args[0])
+    elif instr == "jr":
+        predicted_next = reg_to_next(regs[args[0]])
+    elif instr == "jal":
+        write_reg(args[0], u32(pc_linear + 4))
+        predicted_next = next_addr_add(pc_linear, args[-1])
+    elif instr == "jalr":
+        base, offset = args[2], args[1]
+        if base == "x0":
+            predicted_next = zero_jalr_next(offset)
+        else:
+            predicted_next = reg_to_next(regs[base] + offset)
+        write_reg(args[0], u32(pc_linear + 4))
+    elif instr == "call":
+        write_reg("x1", u32(pc_linear + 4))
+        predicted_next = next_addr_add(pc_linear, args[-1])
+    elif instr == "ret":
+        predicted_next = reg_to_next(regs["x1"])
+    elif instr in JUMP_INSTRS:
+        offset = args[-1]
+        predicted_next = (
+            next_addr_add(pc_linear, offset) if branch_taken(instr, args)
+            else next_addr_add(pc_linear, 4)
+        )
+
     else:
         raise NotImplementedError(instr)
 
+    if predicted_next is None:
+        predicted_next = next_addr_add(pc_linear, 4)
+
+    got = u32(next_addr_predict or 0)
+    assert predicted_next == got, (
+        f"{instr} {args}: predicted next=0x{predicted_next:04x}, "
+        f"got=0x{got:04x} (pc=0x{pc:04x})"
+        f"\n\n{plain}"
+    )
+
+    assert next_components is not None
+    current_addr = next_addr_predict
+    current_linear = components_to_linear(next_components)
     regs["x0"] = 0
     for i in range(1, 32):
-        regs[f"x{i}"] = regs[f"x{i}"] & 0xffffffff
+        name = f"x{i}"
+        regs[name] = u32(regs[name])
+        assert regs[name] == regs_predict[name], (f"expected=0x{regs[name]:08x} got=0x{regs_predict[name]:08x} {name}\n\n{regs}\n\n{regs_predict}")
     
 
 
@@ -193,11 +436,11 @@ def main() -> int:
 
     i = 0
     while True:
-        command = "r" if i < 11 else "w"
+        command = "r" if i < 0 else "w"
         child.sendline(command)
-        instr, args, next_addr_predict, regs_predict = get_output(child, command, i)
+        instr, args, next_addr_predict, next_components, regs_predict, plain = get_output(child, command, i)
         if i >= 11:
-            run_command(instr, args, next_addr_predict, regs_predict)
+            run_command(instr, args, next_addr_predict, next_components, regs_predict, plain)
         i += 1
     child.sendline("q")
     return 0

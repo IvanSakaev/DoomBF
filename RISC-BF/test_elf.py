@@ -150,7 +150,7 @@ JUMP_INSTRS = {
 
 current_addr = 0
 current_linear = 0
-regs = None
+regs = {}
 memory = [0] * (16 ** 7)
 
 
@@ -267,7 +267,7 @@ def branch_taken(instr: str, args: list) -> bool:
 
 def run_command(instr, args, next_addr_predict, next_components, regs_predict, plain):
     global current_addr, current_linear, regs
-    if regs is None:
+    if regs == {}:
         assert next_components is not None
         current_addr = next_addr_predict
         current_linear = components_to_linear(next_components)
@@ -280,6 +280,7 @@ def run_command(instr, args, next_addr_predict, next_components, regs_predict, p
     pc = current_addr
     pc_linear = current_linear
     predicted_next = None
+    prev_regs = regs.copy()
 
     if instr == "add":
         write_reg(args[0], regs[args[1]] + regs[args[2]])
@@ -414,7 +415,7 @@ def run_command(instr, args, next_addr_predict, next_components, regs_predict, p
     for i in range(1, 32):
         name = f"x{i}"
         regs[name] = u32(regs[name])
-        assert regs[name] == regs_predict[name], (f"expected=0x{regs[name]:08x} got=0x{regs_predict[name]:08x} {name}\n\n{regs}\n\n{regs_predict}")
+        assert regs[name] == regs_predict[name], (f"expected=0x{regs[name]:08x} got=0x{regs_predict[name]:08x} {name}\n\n{prev_regs}\n\n{regs}\n\n{regs_predict}")
     
 
 

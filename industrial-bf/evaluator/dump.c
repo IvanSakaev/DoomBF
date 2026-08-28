@@ -1,4 +1,16 @@
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#ifndef S_IRUSR
+#define S_IRUSR _S_IREAD
+#endif
+#ifndef S_IWUSR
+#define S_IWUSR _S_IWRITE
+#endif
+#else
 #include <unistd.h>
+#endif
 #include <fcntl.h>
 
 void dump_tape() {

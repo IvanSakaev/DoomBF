@@ -5,7 +5,17 @@ IFS=$'\n\t'
 sudo apt-get update
 sudo apt-get install libx11-dev build-essential gcc-riscv64-unknown-elf python3 python3-venv python3-pip
 
-wget https://ftp.gnu.org/gnu/lightning/lightning-2.2.3.tar.gz
+LIGHTNING_TGZ="lightning-2.2.3.tar.gz"
+LOCAL_LIGHTNING="./toolchains/lightning/${LIGHTNING_TGZ}"
+
+if ! wget -O "${LIGHTNING_TGZ}" "https://ftp.gnu.org/gnu/lightning/${LIGHTNING_TGZ}"; then
+    echo "Не удалось скачать ${LIGHTNING_TGZ}, беру локальную копию: ${LOCAL_LIGHTNING}"
+    if [[ ! -f "${LOCAL_LIGHTNING}" ]]; then
+        echo "Ошибка: локальный архив не найден: ${LOCAL_LIGHTNING}" >&2
+        exit 1
+    fi
+    cp "${LOCAL_LIGHTNING}" "${LIGHTNING_TGZ}"
+fi
 tar -xf lightning-2.2.3.tar.gz
 rm lightning-2.2.3.tar.gz
 pushd lightning-2.2.3

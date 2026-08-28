@@ -1,11 +1,15 @@
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <X11/Xutil.h>
+#include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <errno.h>
+
+
+#include "frnt_protocol.h"
 
 #define BYTES_PER_PIXEL 4
 
@@ -14,31 +18,20 @@ void read_until_image();
 short read_short();
 void full_read(char*, int);
 
-#define KEY_UP      0x01
-#define KEY_DOWN    0x02
-#define KEY_LEFT    0x03
-#define KEY_RIGHT   0x04
-#define KEY_ENTER   0x05
-#define KEY_SPACE   0x06
-#define KEY_CTRL    0x07
-#define KEY_ESC     0x08
-#define KEY_Y       0x09
-#define KEYUP       0xf0
-
 static int parse_key(int key) {
     int k = 0;
     switch (key) {
-        case XK_Return:   k = KEY_ENTER; break;
-        case XK_Left:     k = KEY_LEFT; break;
-        case XK_Right:    k = KEY_RIGHT; break;
-        case XK_Up:       k = KEY_UP; break;
-        case XK_Down:     k = KEY_DOWN; break;
-        case XK_space:    k = KEY_SPACE; break;
+        case XK_Return:   k = DOOMBF_KEY_ENTER; break;
+        case XK_Left:     k = DOOMBF_KEY_LEFT; break;
+        case XK_Right:    k = DOOMBF_KEY_RIGHT; break;
+        case XK_Up:       k = DOOMBF_KEY_UP; break;
+        case XK_Down:     k = DOOMBF_KEY_DOWN; break;
+        case XK_space:    k = DOOMBF_KEY_SPACE; break;
         case XK_Control_L:
-        case XK_Control_R: k = KEY_CTRL; break;
-        case XK_Escape:   k = KEY_ESC; break;
+        case XK_Control_R: k = DOOMBF_KEY_CTRL; break;
+        case XK_Escape:   k = DOOMBF_KEY_ESC; break;
         case XK_y:
-        case XK_Y:        k = KEY_Y; break;
+        case XK_Y:        k = DOOMBF_KEY_Y; break;
         default: break;
     }
     return k;
@@ -47,7 +40,7 @@ static int parse_key(int key) {
 static void send_keyaction(int k, int action) {
     if (!k) return;
 
-    if (action == 2) k |= KEYUP;
+    if (action == 2) k |= DOOMBF_KEY_RELEASE;
 
     putc(k, stdout);
 }

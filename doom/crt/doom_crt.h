@@ -1,8 +1,9 @@
 
 #define NULL ((void*)0)
 
-
+#ifndef _WIN32
 typedef unsigned int size_t;
+#endif
 
 typedef unsigned long ulong;
 typedef unsigned int u32;

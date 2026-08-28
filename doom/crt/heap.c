@@ -88,9 +88,13 @@ void* Heap_Malloc(HeapCfg* p_heap, size_t xWantedSize);
 //OS_ASSERT
 
 #ifdef _WIN32
+#define portPOINTER_SIZE_TYPE    uint64_t
+#else
+#ifdef _BF
 #define portPOINTER_SIZE_TYPE    uint32_t
 #else
 #define portPOINTER_SIZE_TYPE    uint64_t
+#endif
 #endif
 
 #define HEAP_BYTE_ALIGNMENT         8
@@ -240,7 +244,7 @@ void* Heap_Malloc(HeapCfg * p_heap, size_t xWantedSize)
                          * cast is used to prevent byte alignment warnings from the
                          * compiler. */
                         pxNewBlockLink = (void*)(((uint8_t*)pxBlock) + xWantedSize);
-                        HEAP_ASSERT((((size_t)pxNewBlockLink) & HEAP_BYTE_ALIGNMENT_MASK) == 0);
+                        HEAP_ASSERT((((portPOINTER_SIZE_TYPE)pxNewBlockLink) & HEAP_BYTE_ALIGNMENT_MASK) == 0);
 
                         /* Calculate the sizes of two blocks split from the
                          * single block. */
@@ -270,7 +274,7 @@ void* Heap_Malloc(HeapCfg * p_heap, size_t xWantedSize)
 
         //traceMALLOC(pvReturn, xWantedSize);
     }
-    HEAP_ASSERT((((size_t)pvReturn) & (size_t)HEAP_BYTE_ALIGNMENT_MASK) == 0);
+    HEAP_ASSERT((((portPOINTER_SIZE_TYPE)pvReturn) & (portPOINTER_SIZE_TYPE)HEAP_BYTE_ALIGNMENT_MASK) == 0);
     if (xWantedSize != 0 && pvReturn == NULL)
     {
         printf("\nFATAL ERROR: HEAP: FAILED TO ALLOCATE %u!", xWantedSize);
@@ -458,7 +462,7 @@ void Heap_DefineHeapRegions(HeapCfg* p_heap, const HeapRegion* const pxHeapRegio
             HEAP_ASSERT(p_heap->pHeapEnd != heapPROTECT_BLOCK_POINTER(NULL));
 
             /* Check blocks are passed in with increasing start addresses. */
-            HEAP_ASSERT((size_t)xAddress > (size_t)p_heap->pHeapEnd);
+            HEAP_ASSERT((portPOINTER_SIZE_TYPE)xAddress > (portPOINTER_SIZE_TYPE)p_heap->pHeapEnd);
         }
 
         /* Remember the location of the end marker in the previous region, if

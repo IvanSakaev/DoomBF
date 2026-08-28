@@ -1,4 +1,4 @@
-#include "config.h"
+#include "ibf_config.h"
 
 uint64_t round_up_to_power_of_two(uint64_t n) {
         uint64_t power = 1;
@@ -41,7 +41,13 @@ string read_file(string filename, uint64_t *program_length) {
         fseek(f, 0, SEEK_SET);
 
         string string = safe_malloc(fsize + 1);
-        fread(string, fsize, 1, f);
+        const size_t bytes_read = fread(string, 1, (size_t)fsize, f);
+        if (bytes_read != (size_t)fsize) {
+                perror("reading file");
+                fclose(f);
+                free(string);
+                return NULL;
+        }
         fclose(f);
 
         string[fsize] = 0;

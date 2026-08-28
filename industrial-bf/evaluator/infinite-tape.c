@@ -1,4 +1,4 @@
-#include "config.h"
+#include "ibf_config.h"
 
 #define PAGE_SIZE ((uint64_t)1<<PAGE_SIZE_POWER)
 #define HOT_TAPE (PAGE_SIZE * 4)

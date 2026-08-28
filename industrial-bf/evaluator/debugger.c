@@ -551,7 +551,7 @@ void debugger_print_output() {
 
         printf(FADE "OUTPUT:" FADE_r);
         for (uint32_t i = 0; i < output_len; i++) {
-                printf(" %2x", ((uint64_t)output_buf[i])&0xff);
+                printf(" %02x", ((uint64_t)output_buf[i])&0xff);
         }
         printf("\n       ");
 

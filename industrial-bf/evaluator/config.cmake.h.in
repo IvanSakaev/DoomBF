@@ -1,0 +1,18 @@
+#ifndef IBF_CONFIG_CMAKE_H
+#define IBF_CONFIG_CMAKE_H
+
+#define PAGE_SIZE_POWER @IBF_PAGE_SIZE_POWER@
+#define CELL uint8_t
+
+#cmakedefine DISABLE_ROLLING
+#cmakedefine DEBUGGER
+#cmakedefine ASSERTS
+#cmakedefine DUMP_TAPE
+#define CELL_FORMAT_STRING "%2x"
+
+#cmakedefine FAST_ROL
+#cmakedefine JIT
+#define READ_BLOCK_SIZE 0x20000
+#define ROLLBACK_CLEAR_MIN_SIZE 0xf0000
+
+#endif

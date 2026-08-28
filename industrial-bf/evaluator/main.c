@@ -7,18 +7,40 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <inttypes.h>
+#include <errno.h>
 
 #ifndef _WIN32
 #include <unistd.h>
 #include <arpa/inet.h>
 
 #else
+#include <io.h>
+#include <fcntl.h>
 #include "win_byteorder.c"
+
+/* MSVC does not provide POSIX getopt(). */
+static int optind = 1;
+static int ibf_optpos = 1;
+
+static int getopt(int argc, char *const argv[], const char *options) {
+        if (optind >= argc || argv[optind][0] != '-' || argv[optind][1] == '\0')
+                return -1;
+        if (strcmp(argv[optind], "--") == 0) {
+                optind++;
+                return -1;
+        }
+
+        int opt = (unsigned char)argv[optind][ibf_optpos++];
+        if (argv[optind][ibf_optpos] == '\0') {
+                optind++;
+                ibf_optpos = 1;
+        }
+        return strchr(options, opt) ? opt : '?';
+}
 #endif
 
-#include <errno.h>
-
-#include "config.h"
+#include "ibf_config.h"
 
 #ifdef JIT
 #include <lightning.h>
@@ -55,8 +77,7 @@ string read_file(string filename, uint64_t *program_length);
 void evaluate(uint8_t program[]);
 
 void usage(string exec) {
-        fprintf(stderr, "usage: %s [-daoc] [--] program.b\n",
-                exec);
+        fprintf(stderr, "usage: %s [-daocx] [--] program.b\n", exec);
         exit(1);
 }
 
@@ -99,6 +120,14 @@ int32_t main(int32_t argc, string argv[]) {
         if (optind != argc - 1) usage(argv[0]);
         filename = argv[optind];
         
+#ifdef _WIN32
+        if (_setmode(_fileno(stdin), _O_BINARY) == -1 ||
+            _setmode(_fileno(stdout), _O_BINARY) == -1) {
+                perror("setting binary stdio mode");
+                exit(1);
+        }
+#endif
+        
         FILE *fd = fopen(filename, "r");
         if (!fd) {
                 perror("opening file");
@@ -137,8 +166,10 @@ if (option_d) {
         fclose(fd);
         free(tape);
         free(program);
+        return 0;
 }
 
+#ifndef IBF_PORTABLE_DISPATCH
 const void* jumptable[0x100];
 
 void evaluate(uint8_t program[]) {
@@ -349,3 +380,142 @@ exit:
 #endif
         return;
 }
+#else
+void evaluate(uint8_t program[]) {
+#ifdef DEBUGGER
+        debugger_init();
+#endif
+        uint64_t pc = 0;
+        uint64_t dp = 0;
+        uint8_t last_page = 0;
+
+        for (;;) {
+                uint8_t *inst = &program[pc];
+#ifdef DEBUGGER
+                if (option_d && CMD_cmd(inst) != '#' && CMD_cmd(inst) != '*') {
+                        debugger_call(BREAK_REASON_INSTRUCTION, tape, program, dp, pc);
+                }
+#endif
+                switch (CMD_cmd(inst)) {
+                        case 0:
+                                return;
+                        case '+':
+                                tape[dp % HOT_TAPE] += CMD_rol_arg(inst);
+                                pc += 2;
+                                break;
+                        case '-':
+                                tape[dp % HOT_TAPE] -= CMD_rol_arg(inst);
+                                pc += 2;
+                                break;
+                        case '>':
+                                dp += CMD_rol_arg(inst);
+                                CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
+                                pc += 2;
+                                break;
+                        case 'r':
+                                dp += CMD_wide_arg(inst);
+                                CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
+                                pc += 8;
+                                break;
+                        case '<':
+                                dp -= CMD_rol_arg(inst);
+                                CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
+                                pc += 2;
+                                break;
+                        case 'l':
+                                dp -= CMD_wide_arg(inst);
+                                CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
+                                pc += 8;
+                                break;
+                        case '.':
+#ifdef DEBUGGER
+                                if (option_d && !option_o) {
+                                        debugger_out(tape[dp % HOT_TAPE]);
+                                } else {
+                                        putchar(tape[dp % HOT_TAPE]);
+                                }
+#else
+                                putchar(tape[dp % HOT_TAPE]);
+#endif
+                                pc += 1;
+                                break;
+                        case ',':
+                                if (fread(&tape[dp % HOT_TAPE], 1, 1, stdin) != 1)
+                                        tape[dp % HOT_TAPE] = 0;
+                                pc += 1;
+                                break;
+                        case '[':
+                                if (!tape[dp % HOT_TAPE]) {
+                                        pc = CMD_wide_arg(inst);
+                                }
+                                pc += 8;
+                                break;
+                        case ']':
+                                if (tape[dp % HOT_TAPE]) {
+                                        pc = CMD_wide_arg(inst);
+                                }
+                                pc += 8;
+                                break;
+                        case '^': {
+                                const int64_t offset = CMD_copy_offset(inst);
+                                const CELL value = (CELL)(tape[dp % HOT_TAPE] * CMD_copy_val(inst));
+                                if (value) {
+                                        dp += offset;
+                                        CHECK_PAGE_TRANSITION(tape, offset > 0 ? 1 : -1, dp, last_page);
+                                        tape[dp % HOT_TAPE] += value;
+                                        dp -= offset;
+                                        CHECK_PAGE_TRANSITION(tape, offset > 0 ? -1 : 1, dp, last_page);
+                                }
+                                pc += 8;
+                                break;
+                        }
+                        case '0':
+                                tape[dp % HOT_TAPE] = 0;
+                                pc += 1;
+                                break;
+#ifdef DEBUGGER
+                        case '#':
+                                if (option_d) {
+                                        debugger_call(BREAK_REASON_BREAKPOINT, tape, program, dp, pc);
+                                }
+                                pc += 1;
+                                break;
+                        case '*':
+                                if (option_d) {
+                                        debugger_call(BREAK_REASON_WEAK_BREAKPOINT, tape, program, dp, pc);
+                                }
+                                pc += 1;
+                                break;                                
+#endif
+#ifdef ASSERTS
+                        case '@':
+                        case '!': {
+                                const char *assert_name = CMD_cmd(inst) == '@' ? "location" : "value";
+                                const uint64_t assert_got = CMD_cmd(inst) == '@' ? dp : tape[dp % HOT_TAPE];
+                                const uint64_t assert_expected = CMD_wide_arg(inst);
+                                const uint64_t assert_comment = CMD_assert_com(inst);
+                                if (assert_expected != assert_got) {
+                                        printf("assertion failed: %s\n", assert_name);
+                                        if (assert_comment) {
+                                                printf("comment:  0x%016" PRIx64 "\n", assert_comment);
+                                        }
+                                        printf("expected: 0x%016" PRIx64 "\n", assert_expected);
+                                        printf("got:      0x%016" PRIx64 "\n", assert_got);
+#ifdef DUMP_TAPE
+                                        printf("dumping tape.bin...\n");
+                                        dump_tape();
+#endif
+                                        exit(1);
+                                }
+                                pc += 16;
+                                break;
+                        }
+#endif
+                        default:
+                                fprintf(stderr, "invalid optimized opcode 0x%02x at pc=0x%" PRIx64 "\n",
+                                        CMD_cmd(inst), pc);
+                                exit(1);
+                }
+        }
+}
+#endif

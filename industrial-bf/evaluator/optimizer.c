@@ -1,6 +1,6 @@
 // bfm - Converts BrainF to BrainFMacros
 
-#include "config.h"
+#include "ibf_config.h"
 
 #include <stdlib.h>
 #include <stdio.h>

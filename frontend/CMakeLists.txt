@@ -1,0 +1,35 @@
+cmake_minimum_required(VERSION 3.20)
+
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    project(doombf_frontend LANGUAGES C)
+endif()
+
+if(WIN32)
+    add_executable(frnt "${CMAKE_CURRENT_SOURCE_DIR}/frnt_win.c")
+    target_link_libraries(frnt PRIVATE user32 gdi32)
+    target_compile_definitions(frnt PRIVATE _CRT_SECURE_NO_WARNINGS)
+else()
+    find_package(X11 REQUIRED)
+    add_executable(frnt "${CMAKE_CURRENT_SOURCE_DIR}/frnt.c")
+    target_include_directories(frnt PRIVATE ${X11_INCLUDE_DIR})
+    target_link_libraries(frnt PRIVATE ${X11_LIBRARIES})
+endif()
+
+set_target_properties(frnt PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED YES)
+if(MSVC)
+    target_compile_options(frnt PRIVATE /W4 /O2)
+else()
+    target_compile_options(frnt PRIVATE -Wall -Wextra -Wpedantic -O2)
+endif()
+
+if(COMMAND doombf_set_runtime_output)
+    doombf_set_runtime_output(frnt)
+elseif(NOT CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+    set_target_properties(frnt PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    foreach(configuration IN ITEMS Debug Release RelWithDebInfo MinSizeRel)
+        string(TOUPPER "${configuration}" configuration_upper)
+        set_target_properties(frnt PROPERTIES
+            "RUNTIME_OUTPUT_DIRECTORY_${configuration_upper}" "${CMAKE_BINARY_DIR}/bin"
+        )
+    endforeach()
+endif()

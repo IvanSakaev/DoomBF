@@ -22,9 +22,21 @@ lnx_doom: doom
 	$(MAKE) -C $^ $@
 	cp $^/$@ .
 
+lnx_run: lnx_doom
+	./lnx_doom ./doom/data/doom.wad
+
 fake_bfk_doom: doom
 	$(MAKE) -C $^ $@
 	cp $^/$@ .
+
+PIPE := pipe
+
+fake_bfk_run: fake_bfk_doom
+	@if [ ! -p $(PIPE) ]; then rm -f $(PIPE) && mkfifo $(PIPE); fi
+	./fake_bfk_doom < pipe | ./frnt > pipe
+
+ibf_test:
+	make -C industrial-bf test
 
 bfk_doom.elf: doom
 	$(MAKE) -C $^ $@

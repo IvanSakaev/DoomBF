@@ -32,6 +32,13 @@
 #ifndef __DOOM_H__
 #define __DOOM_H__
 
+#ifdef _BF
+typedef long bfptr_t;
+typedef unsigned long ubfptr_t;
+#else
+typedef long long bfptr_t;
+typedef unsigned long long ubfptr_t;
+#endif
 
 // Sample rate of sound samples from doom
 #define DOOM_SAMPLERATE 11025

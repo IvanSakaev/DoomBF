@@ -1,0 +1,19 @@
+#ifndef DOOMBF_FRONTEND_PROTOCOL_H
+#define DOOMBF_FRONTEND_PROTOCOL_H
+
+#define DOOMBF_KEY_UP       0x01
+#define DOOMBF_KEY_DOWN     0x02
+#define DOOMBF_KEY_LEFT     0x03
+#define DOOMBF_KEY_RIGHT    0x04
+#define DOOMBF_KEY_ENTER    0x05
+#define DOOMBF_KEY_SPACE    0x06
+#define DOOMBF_KEY_CTRL     0x07
+#define DOOMBF_KEY_ESC      0x08
+#define DOOMBF_KEY_Y        0x09
+#define DOOMBF_KEY_RELEASE  0xf0
+#define DOOMBF_KEY_COUNT    10
+
+#define DOOMBF_MAX_FRAME_WIDTH  8192
+#define DOOMBF_MAX_FRAME_HEIGHT 8192
+
+#endif

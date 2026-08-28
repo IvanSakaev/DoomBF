@@ -71,8 +71,11 @@
         riscv64-binutils-bin
       ];
       src = pkgs.fetchurl {
-        url = "http://ftp.debian.org/debian/pool/main/g/gcc-riscv64-unknown-elf/gcc-riscv64-unknown-elf_15.2.0-23_amd64.deb";
-        hash = "sha256-hu1y6LVsZdCjvXgjakWFSH3p23L8V+2o7Kusd1wuTbk=";
+        urls = [
+          "http://ftp.debian.org/debian/pool/main/g/gcc-riscv64-unknown-elf/gcc-riscv64-unknown-elf_15.3.0-24_amd64.deb"
+          "https://archive.org/download/gcc-riscv64-unknown-elf_15.3.0-24_amd64/gcc-riscv64-unknown-elf_15.3.0-24_amd64.deb"
+        ];
+        hash = "sha256-BFJ/oiXrtgbDunmw0Sx0yGUpvvpK2i4MHU6MYWe2nhw=";
       };
       unpackPhase = ''
         ${pkgs.dpkg}/bin/dpkg -x $src .

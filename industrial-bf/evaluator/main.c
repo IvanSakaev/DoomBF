@@ -53,7 +53,6 @@ uint8_t option_d = 0;
 uint8_t option_a = 0;
 uint8_t option_o = 0;
 uint8_t option_c = 0;
-uint8_t option_x = 0;
 
 CELL *tape;
 
@@ -108,9 +107,6 @@ int32_t main(int32_t argc, string argv[]) {
                         break;
                     case 'c':
                         option_c = 1;
-                        break;
-                    case 'x':
-                        option_x = 1;
                         break;
                     default: /* '?' */
                         usage(argv[0]);
